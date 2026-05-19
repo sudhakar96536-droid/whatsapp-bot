@@ -155,7 +155,7 @@ def send_list_message(to):
         "interactive": {
             "type": "list",
             "body": {
-                "text": "Welcome to ZEBRONICS ( Zebcare_Service ). We are delighted to assist you. Please choose the correct menu option."
+                "text": "Welcome to ZEBRONICS ( Zebcare_Service ).\nWe are delighted to assist you.\nPlease choose the correct menu option."
             },
             "action": {
                 "button": "Select Option",
@@ -366,7 +366,8 @@ def ask_next_onsite_question(sender):
         data = onsite_complaints[sender]["data"]
 
         summary = f"""
-✅ Onsite Complaint Submitted
+✅ Onsite Complaint Submitted,
+We will review & contact soon.
 
 👤 Name: {data.get('name')}
 📧 Email: {data.get('email')}
@@ -423,7 +424,8 @@ def ask_next_warranty_question(sender):
         data = warranty_registrations[sender]["data"]
 
         summary = f"""
-✅ Warranty Registration Info Submitted , We will Review & Confirm Shortly.
+✅ Warranty Registration Info Submitted,
+We will Review & Confirm Shortly.
 
 👤 Full Name: {data.get('full_name')}
 📧 Email: {data.get('email')}
@@ -680,6 +682,8 @@ def webhook():
                             reply_message = f"""
 ✅ Complaint Status
 
+📌 *Status: Pending & Remarks: {job_data['Status']}*
+
 📋 JOB NO: {job_data['JOB_NO']}
 📅 JOB DATE: {job_data['JOB_DATE']}
 📍 Location: {job_data['Location']}
@@ -687,7 +691,7 @@ def webhook():
 🛡 Warranty: {job_data['Warranty']}
 🛒 Product Name: {job_data['Product_Name']}
 ⚠ Complaint: {job_data['Complaint']}
-📌 *Status: Pending & Remarks:* {job_data['Status']}
+
 
 Thank you!
 Zebcare_Service
