@@ -109,7 +109,7 @@ def get_job_details(job_number):
                 "JOB_NO": result.iloc[0]["JOB_NO"],
                 "JOB_DATE": result.iloc[0]["JOB_DATE"],
                 "Location": result.iloc[0]["Location"],
-                "CUSTOMER NAME": result.iloc[0]["CUSTOMER NAME"],
+                "CUSTOMER NAME": result.iloc[0]["CUSTOMER_NAME"],
                 "Warranty": result.iloc[0]["Warranty"],
                 "Product_Name": result.iloc[0]["Product_Name"],
                 "Complaint": result.iloc[0]["Complaint"],
