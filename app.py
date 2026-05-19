@@ -1,6 +1,7 @@
 from flask import Flask, request
 import requests
 import os
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -12,6 +13,13 @@ ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 
+EXCEL_FILE = "pin.xlsx"
+
+# ============================================
+# STORE USERS WAITING FOR PINCODE
+# ============================================
+
+waiting_for_pincode = {}
 
 # ============================================
 # HOME ROUTE
@@ -21,9 +29,41 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 def home():
     return "WhatsApp Bot Running Successfully"
 
+# ============================================
+# READ EXCEL AND FIND PINCODE
+# ============================================
+
+def get_service_center(pincode):
+
+    try:
+
+        df = pd.read_excel(EXCEL_FILE)
+
+        # Convert pincode column to string
+        df["Pincode"] = df["Pincode"].astype(str)
+
+        pincode = str(pincode).strip()
+
+        result = df[df["Pincode"] == pincode]
+
+        if not result.empty:
+
+            address = result.iloc[0]["Address"]
+            contact = result.iloc[0]["Contact"]
+
+            return address, contact
+
+        return None, None
+
+    except Exception as e:
+
+        print("EXCEL ERROR:")
+        print(str(e))
+
+        return None, None
 
 # ============================================
-# SEND WHATSAPP LIST MESSAGE
+# SEND LIST MESSAGE
 # ============================================
 
 def send_list_message(to):
@@ -91,9 +131,8 @@ def send_list_message(to):
     print(response.status_code)
     print(response.text)
 
-
 # ============================================
-# SEND NORMAL TEXT MESSAGE
+# SEND TEXT MESSAGE
 # ============================================
 
 def send_message(to, message):
@@ -120,7 +159,6 @@ def send_message(to, message):
     print(response.status_code)
     print(response.text)
 
-
 # ============================================
 # WEBHOOK
 # ============================================
@@ -143,7 +181,7 @@ def webhook():
         return "Invalid Verify Token", 403
 
     # ========================================
-    # HANDLE INCOMING EVENTS
+    # HANDLE POST EVENTS
     # ========================================
 
     if request.method == "POST":
@@ -158,39 +196,77 @@ def webhook():
             entry = data["entry"][0]["changes"][0]["value"]
 
             # ====================================
-            # MESSAGE STATUS EVENTS
+            # STATUS EVENTS
             # ====================================
 
             if "statuses" in entry:
 
-                status_data = entry["statuses"][0]
+                for status_data in entry["statuses"]:
 
-                recipient = status_data.get("recipient_id")
-                status = status_data.get("status")
+                    recipient = status_data.get("recipient_id")
+                    status = status_data.get("status")
 
-                print(f"STATUS UPDATE => {recipient} : {status}")
+                    print(f"STATUS UPDATE => {recipient} : {status}")
 
             # ====================================
-            # INCOMING USER MESSAGES
+            # CHECK IF MESSAGES EXIST
             # ====================================
 
-            if "messages" in entry:
+            if "messages" not in entry:
+                return "ok", 200
 
-                message = entry["messages"][0]
+            # ====================================
+            # LOOP ALL MESSAGES
+            # ====================================
+
+            for message in entry["messages"]:
 
                 sender = message["from"]
 
                 print("MESSAGE FROM:", sender)
 
-                # ================================
+                # =================================
                 # TEXT MESSAGE
-                # ================================
+                # =================================
 
                 if message["type"] == "text":
 
-                    user_text = message["text"]["body"].strip().lower()
+                    user_text = message["text"]["body"].strip()
 
                     print("USER MESSAGE:", user_text)
+
+                    # =============================
+                    # CHECK PINCODE FLOW
+                    # =============================
+
+                    if sender in waiting_for_pincode:
+
+                        address, contact = get_service_center(user_text)
+
+                        if address:
+
+                            send_message(
+                                sender,
+                                f"✅ Nearest Zebronics Authorized Service Center\n\n📍 Address:\n{address}\n\n📞 Contact:\n{contact}\n\nThank you!"
+                            )
+
+                        else:
+
+                            send_message(
+                                sender,
+                                "❌ Sorry, service center not found for this pincode."
+                            )
+
+                        # Remove from waiting list
+                        del waiting_for_pincode[sender]
+
+                        continue
+
+                    # =============================
+                    # NORMAL GREETINGS
+                    # =============================
+
+                    user_text_lower = user_text.lower()
 
                     greetings = [
                         "hi",
@@ -200,7 +276,7 @@ def webhook():
                         "start"
                     ]
 
-                    if user_text in greetings:
+                    if user_text_lower in greetings:
 
                         send_list_message(sender)
 
@@ -211,13 +287,17 @@ def webhook():
                             "Please type HI to start."
                         )
 
-                # ================================
-                # LIST RESPONSE
-                # ================================
+                # =================================
+                # INTERACTIVE MESSAGE
+                # =================================
 
                 elif message["type"] == "interactive":
 
                     interactive = message["interactive"]
+
+                    # =============================
+                    # LIST REPLY
+                    # =============================
 
                     if interactive["type"] == "list_reply":
 
@@ -227,10 +307,29 @@ def webhook():
                         print("SELECTED:", selected_id)
                         print("TITLE:", selected_title)
 
-                        send_message(
-                            sender,
-                            f"✅ You selected: {selected_title}"
-                        )
+                        # =========================
+                        # SERVICE CENTER FLOW
+                        # =========================
+
+                        if selected_id == "opt3":
+
+                            waiting_for_pincode[sender] = True
+
+                            send_message(
+                                sender,
+                                "📍 Please enter your pincode to find nearest service center."
+                            )
+
+                        # =========================
+                        # OTHER OPTIONS
+                        # =========================
+
+                        else:
+
+                            send_message(
+                                sender,
+                                f"✅ You selected: {selected_title}"
+                            )
 
         except Exception as e:
 
@@ -238,7 +337,6 @@ def webhook():
             print(str(e))
 
         return "ok", 200
-
 
 # ============================================
 # RUN APP
