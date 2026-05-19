@@ -155,7 +155,7 @@ def send_list_message(to):
         "interactive": {
             "type": "list",
             "body": {
-                "text": "Welcome to Zebronics. We are delighted to assist you. Please choose the correct menu option."
+                "text": "Welcome to ZEBRONICS ( Zebcare_Service ). We are delighted to assist you. Please choose the correct menu option."
             },
             "action": {
                 "button": "Select Option",
@@ -224,7 +224,7 @@ def send_onsite_options(to):
         "interactive": {
             "type": "button",
             "body": {
-                "text": "Choose complaint registration method."
+                "text": "Onsite complaint registration method."
             },
             "action": {
                 "buttons": [
@@ -273,7 +273,7 @@ def send_warranty_options(to):
         "interactive": {
             "type": "button",
             "body": {
-                "text": "Choose warranty registration method."
+                "text": "New warranty registration method."
             },
             "action": {
                 "buttons": [
@@ -386,6 +386,7 @@ def ask_next_onsite_question(sender):
 📎 Invoice Uploaded: Yes
 
 Thank you!
+Zebcare_Service
 """
 
         send_message(sender, summary)
@@ -422,7 +423,7 @@ def ask_next_warranty_question(sender):
         data = warranty_registrations[sender]["data"]
 
         summary = f"""
-✅ Warranty Registration Submitted
+✅ Warranty Registration Info Submitted , We will Review & Confirm Shortly.
 
 👤 Full Name: {data.get('full_name')}
 📧 Email: {data.get('email')}
@@ -434,6 +435,7 @@ def ask_next_warranty_question(sender):
 📅 Purchase Date: {data.get('purchase_date')}
 
 Thank you!
+Zebcare_Service
 """
 
         send_message(sender, summary)
@@ -651,14 +653,14 @@ def webhook():
 
                             send_message(
                                 sender,
-                                f"✅ Nearest Zebronics Authorized Service Center\n\n📍 Address:\n{address}\n\n📞 Contact:\n{contact}"
+                                f"✅ Nearest Zebronics Authorized Service Center\n\n📍 Address:\n{address}\n\n📞 Contact:\n{contact}\n\nThank you!\nZebcare_Service"
                             )
 
                         else:
 
                             send_message(
                                 sender,
-                                "❌ Service center not found for this pincode. Pls try again with any other pincode"
+                                "❌ Service center not found for this pincode. Pls try again with any other pincode.\n\nThank you!\nZebcare_Service"
                             )
 
                         del waiting_for_pincode[sender]
@@ -686,6 +688,9 @@ def webhook():
 🛒 Product Name: {job_data['Product_Name']}
 ⚠ Complaint: {job_data['Complaint']}
 📌 *Status: Pending & Remarks:* {job_data['Status']}
+
+Thank you!
+Zebcare_Service
 """
 
                             send_message(sender, reply_message)
@@ -694,7 +699,7 @@ def webhook():
 
                             send_message(
                                 sender,
-                                "📌 *Status:* No Pending / Delivered"
+                                "📌 *Status:* No Pending / Delivered\n\nThank you!\nZebcare_Service"
                             )
 
                         del waiting_for_job_number[sender]
