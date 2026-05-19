@@ -695,6 +695,9 @@ def webhook():
 
 Thank you!
 Zebcare_Service
+
+You can also check status through following link
+https://support.zebronics.com/service-request/track-request/
 """
 
                             send_message(sender, reply_message)
