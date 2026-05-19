@@ -39,12 +39,12 @@ def get_service_center(pincode):
 
         df = pd.read_excel(EXCEL_FILE)
 
-        # Convert pincode column to string
-        df["Pincode"] = df["Pincode"].astype(str)
+        # Convert PINCODE column to string
+        df["PINCODE"] = df["PINCODE"].astype(str)
 
         pincode = str(pincode).strip()
 
-        result = df[df["Pincode"] == pincode]
+        result = df[df["PINCODE"] == pincode]
 
         if not result.empty:
 
