@@ -14,12 +14,14 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 
 EXCEL_FILE = "pin.xlsx"
+JOB_EXCEL_FILE = "job.xlsx"
 
 # ============================================
 # STORE USERS WAITING FOR PINCODE
 # ============================================
 
 waiting_for_pincode = {}
+waiting_for_job_number = {}
 
 # ============================================
 # ONSITE COMPLAINT FLOW STORAGE
@@ -85,6 +87,43 @@ def get_service_center(pincode):
 
         return None, None
 
+# ============================================
+# TRACK COMPLAINT FROM EXCEL
+# ============================================
+
+def get_job_details(job_number):
+
+    try:
+
+        df = pd.read_excel(JOB_EXCEL_FILE)
+
+        df["JOB_NO"] = df["JOB_NO"].astype(str)
+
+        job_number = str(job_number).strip()
+
+        result = df[df["JOB_NO"] == job_number]
+
+        if not result.empty:
+
+            return {
+                "JOB_NO": result.iloc[0]["JOB_NO"],
+                "JOB_DATE": result.iloc[0]["JOB_DATE"],
+                "Location": result.iloc[0]["Location"],
+                "CUSTOMER NAME": result.iloc[0]["CUSTOMER NAME"],
+                "Warranty": result.iloc[0]["Warranty"],
+                "Product_Name": result.iloc[0]["Product_Name"],
+                "Complaint": result.iloc[0]["Complaint"],
+                "Status": result.iloc[0]["Status"]
+            }
+
+        return None
+
+    except Exception as e:
+
+        print("JOB EXCEL ERROR:")
+        print(str(e))
+
+        return None
 # ============================================
 # SEND LIST MESSAGE
 # ============================================
@@ -459,6 +498,41 @@ def webhook():
 
                         continue
 
+                                        # =================================
+                    # TRACK COMPLAINT FLOW
+                    # =================================
+
+                    if sender in waiting_for_job_number:
+
+                        job_data = get_job_details(user_text)
+
+                        if job_data:
+
+                            reply_message = f"""
+✅ Complaint Details
+
+📋 JOB NO: {job_data['JOB_NO']}
+📅 JOB DATE: {job_data['JOB_DATE']}
+📍 Location: {job_data['Location']}
+👤 CUSTOMER NAME: {job_data['CUSTOMER NAME']}
+🛡 Warranty: {job_data['Warranty']}
+🛒 Product Name: {job_data['Product_Name']}
+⚠ Complaint: {job_data['Complaint']}
+📌 Status: {job_data['Status']}
+"""
+
+                            send_message(sender, reply_message)
+
+                        else:
+
+                            send_message(
+                                sender,
+                                "❌ Complaint number not found."
+                            )
+
+                        del waiting_for_job_number[sender]
+
+                        continue
                     # =================================
                     # GREETINGS
                     # =================================
@@ -525,6 +599,18 @@ def webhook():
                                 "📍 Please enter your pincode to find nearest service center."
                             )
 
+                                                # =================================
+                        # TRACK COMPLAINT
+                        # =================================
+
+                        elif selected_id == "opt4":
+
+                            waiting_for_job_number[sender] = True
+
+                            send_message(
+                                sender,
+                                "📋 Please enter your full Job / Complaint Number."
+                            )
                         # =================================
                         # OTHER OPTIONS
                         # =================================
