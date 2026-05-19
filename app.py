@@ -22,6 +22,23 @@ EXCEL_FILE = "pin.xlsx"
 waiting_for_pincode = {}
 
 # ============================================
+# ONSITE COMPLAINT FLOW STORAGE
+# ============================================
+
+onsite_complaints = {}
+
+onsite_steps = [
+    "name",
+    "email",
+    "alternate_phone",
+    "state",
+    "city",
+    "pincode",
+    "address1",
+    "address2"
+]
+
+# ============================================
 # HOME ROUTE
 # ============================================
 
@@ -100,7 +117,7 @@ def send_list_message(to):
                             },
                             {
                                 "id": "opt3",
-                                "title": "Service Center"
+                                "title": "Nearest Service Center Address"
                             },
                             {
                                 "id": "opt4",
@@ -158,7 +175,53 @@ def send_message(to, message):
     print("TEXT RESPONSE:")
     print(response.status_code)
     print(response.text)
+# ============================================
+# ASK NEXT ONSITE QUESTION
+# ============================================
 
+def ask_next_onsite_question(sender):
+
+    current_step_index = onsite_complaints[sender]["step"]
+
+    if current_step_index < len(onsite_steps):
+
+        current_field = onsite_steps[current_step_index]
+
+        questions = {
+            "name": "Please enter your Name",
+            "email": "Please enter your Email",
+            "alternate_phone": "Please enter Alternate Phone Number",
+            "state": "Please enter State",
+            "city": "Please enter City",
+            "pincode": "Please enter Pincode",
+            "address1": "Please enter Address Line 1",
+            "address2": "Please enter Address Line 2"
+        }
+
+        send_message(sender, questions[current_field])
+
+    else:
+
+        data = onsite_complaints[sender]["data"]
+
+        summary = f"""
+✅ Onsite Complaint Submitted
+
+👤 Name: {data.get('name')}
+📧 Email: {data.get('email')}
+📱 Alternate Phone: {data.get('alternate_phone')}
+🌍 State: {data.get('state')}
+🏙 City: {data.get('city')}
+📍 Pincode: {data.get('pincode')}
+🏠 Address1: {data.get('address1')}
+🏠 Address2: {data.get('address2')}
+
+Thank you!
+"""
+
+        send_message(sender, summary)
+
+        del onsite_complaints[sender]
 # ============================================
 # WEBHOOK
 # ============================================
@@ -233,6 +296,24 @@ def webhook():
 
                     user_text = message["text"]["body"].strip()
 
+                    # ==================================
+                    # ONSITE COMPLAINT FLOW
+                    # ==================================
+                    
+                    if sender in onsite_complaints:
+                    
+                        current_step_index = onsite_complaints[sender]["step"]
+                    
+                        current_field = onsite_steps[current_step_index]
+                    
+                        onsite_complaints[sender]["data"][current_field] = user_text
+                    
+                        onsite_complaints[sender]["step"] += 1
+                    
+                        ask_next_onsite_question(sender)
+                    
+                        continue
+
                     print("USER MESSAGE:", user_text)
 
                     # =============================
@@ -254,7 +335,7 @@ def webhook():
 
                             send_message(
                                 sender,
-                                "❌ Sorry, service center not found for this pincode."
+                                "❌ Sorry, service center not found for this pincode. Pls Retry with any other picode"
                             )
 
                         # Remove from waiting list
@@ -306,7 +387,18 @@ def webhook():
 
                         print("SELECTED:", selected_id)
                         print("TITLE:", selected_title)
+                        
+                        # =========================
+                        # ONSITE FLOW
+                        # =========================
+                        if selected_id == "opt2":
 
+                            onsite_complaints[sender] = {
+                                "step": 0,
+                                "data": {}
+                            }
+
+                            ask_next_onsite_question(sender)
                         # =========================
                         # SERVICE CENTER FLOW
                         # =========================
