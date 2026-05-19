@@ -117,7 +117,7 @@ def send_list_message(to):
                             },
                             {
                                 "id": "opt3",
-                                "title": "Nearest Service Center Address"
+                                "title": "Nearest Zebcare Address"
                             },
                             {
                                 "id": "opt4",
