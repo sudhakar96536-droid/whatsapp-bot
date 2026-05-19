@@ -105,7 +105,7 @@ def send_list_message(to):
         "interactive": {
             "type": "list",
             "body": {
-                "text": "Welcome to Zebronics. Please choose an option."
+                "text": "Welcome to Zebronics. We are delighted to assist you. Please choose the correct menu option."
             },
             "action": {
                 "button": "Select Option",
@@ -119,7 +119,7 @@ def send_list_message(to):
                             },
                             {
                                 "id": "opt2",
-                                "title": "Onsite Complaint"
+                                "title": "Onsite Complaint Reg"
                             },
                             {
                                 "id": "opt3",
@@ -151,6 +151,55 @@ def send_list_message(to):
     response = requests.post(url, headers=headers, json=data)
 
     print("LIST RESPONSE:")
+    print(response.status_code)
+    print(response.text)
+
+# ============================================
+# SEND ONSITE COMPLAINT OPTIONS
+# ============================================
+
+def send_onsite_options(to):
+
+    url = f"https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {
+                "text": "Choose complaint registration method."
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "wa_form",
+                            "title": "WhatsApp Form"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "web_form",
+                            "title": "Website Form"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    print("ONSITE OPTIONS RESPONSE:")
     print(response.status_code)
     print(response.text)
 
@@ -443,6 +492,10 @@ def webhook():
 
                     interactive = message["interactive"]
 
+                    # =================================
+                    # LIST REPLY
+                    # =================================
+
                     if interactive["type"] == "list_reply":
 
                         selected_id = interactive["list_reply"]["id"]
@@ -457,12 +510,7 @@ def webhook():
 
                         if selected_id == "opt2":
 
-                            onsite_complaints[sender] = {
-                                "step": 0,
-                                "data": {}
-                            }
-
-                            ask_next_onsite_question(sender)
+                            send_onsite_options(sender)
 
                         # =================================
                         # SERVICE CENTER
@@ -486,6 +534,40 @@ def webhook():
                             send_message(
                                 sender,
                                 f"✅ You selected: {selected_title}"
+                            )
+
+                    # =================================
+                    # BUTTON REPLY
+                    # =================================
+
+                    elif interactive["type"] == "button_reply":
+
+                        button_id = interactive["button_reply"]["id"]
+
+                        print("BUTTON SELECTED:", button_id)
+
+                        # =================================
+                        # WHATSAPP FORM
+                        # =================================
+
+                        if button_id == "wa_form":
+
+                            onsite_complaints[sender] = {
+                                "step": 0,
+                                "data": {}
+                            }
+
+                            ask_next_onsite_question(sender)
+
+                        # =================================
+                        # WEBSITE FORM
+                        # =================================
+
+                        elif button_id == "web_form":
+
+                            send_message(
+                                sender,
+                                "Please register your complaint using below website:\n\nhttps://support.zebronics.com/service-request/"
                             )
 
         except Exception as e:
