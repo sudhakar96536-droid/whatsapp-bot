@@ -35,7 +35,14 @@ onsite_steps = [
     "city",
     "pincode",
     "address1",
-    "address2"
+    "address2",
+    "product_name",
+    "product_serial_no",
+    "warranty",
+    "fault_type",
+    "bill_no",
+    "bill_date",
+    "purchase_invoice"
 ]
 
 # ============================================
@@ -56,7 +63,6 @@ def get_service_center(pincode):
 
         df = pd.read_excel(EXCEL_FILE)
 
-        # Convert PINCODE column to string
         df["PINCODE"] = df["PINCODE"].astype(str)
 
         pincode = str(pincode).strip()
@@ -99,17 +105,17 @@ def send_list_message(to):
         "interactive": {
             "type": "list",
             "body": {
-                "text": "Welcome to Zebronics. We are delighted to assist you. Please choose the correct menu option."
+                "text": "Welcome to Zebronics. Please choose an option."
             },
             "action": {
                 "button": "Select Option",
                 "sections": [
                     {
-                        "title": "Available Options",
+                        "title": "Main Menu",
                         "rows": [
                             {
                                 "id": "opt1",
-                                "title": "Product Registration"
+                                "title": "New Warranty Reg"
                             },
                             {
                                 "id": "opt2",
@@ -117,7 +123,7 @@ def send_list_message(to):
                             },
                             {
                                 "id": "opt3",
-                                "title": "Nearest Zebcare Address"
+                                "title": "Near Service Center"
                             },
                             {
                                 "id": "opt4",
@@ -133,7 +139,7 @@ def send_list_message(to):
                             },
                             {
                                 "id": "opt7",
-                                "title": "Extended Warranty"
+                                "title": "Extend Warranty"
                             }
                         ]
                     }
@@ -175,6 +181,7 @@ def send_message(to, message):
     print("TEXT RESPONSE:")
     print(response.status_code)
     print(response.text)
+
 # ============================================
 # ASK NEXT ONSITE QUESTION
 # ============================================
@@ -195,7 +202,14 @@ def ask_next_onsite_question(sender):
             "city": "Please enter City",
             "pincode": "Please enter Pincode",
             "address1": "Please enter Address Line 1",
-            "address2": "Please enter Address Line 2"
+            "address2": "Please enter Address Line 2",
+            "product_name": "Please enter Product Name",
+            "product_serial_no": "Please enter Product Serial Number",
+            "warranty": "Please enter Warranty Details",
+            "fault_type": "Please enter Fault Type",
+            "bill_no": "Please enter Bill Number",
+            "bill_date": "Please enter Bill Date",
+            "purchase_invoice": "📎 Please upload Purchase Invoice\n\nSupported: jpg/jpeg/pdf\nMax size: 10MB"
         }
 
         send_message(sender, questions[current_field])
@@ -216,12 +230,21 @@ def ask_next_onsite_question(sender):
 🏠 Address1: {data.get('address1')}
 🏠 Address2: {data.get('address2')}
 
+🛒 Product Name: {data.get('product_name')}
+🔢 Serial No: {data.get('product_serial_no')}
+🛡 Warranty: {data.get('warranty')}
+⚠ Fault Type: {data.get('fault_type')}
+🧾 Bill No: {data.get('bill_no')}
+📅 Bill Date: {data.get('bill_date')}
+📎 Invoice Uploaded: Yes
+
 Thank you!
 """
 
         send_message(sender, summary)
 
         del onsite_complaints[sender]
+
 # ============================================
 # WEBHOOK
 # ============================================
@@ -289,6 +312,51 @@ def webhook():
                 print("MESSAGE FROM:", sender)
 
                 # =================================
+                # HANDLE INVOICE FILE UPLOAD
+                # =================================
+
+                if sender in onsite_complaints:
+
+                    current_step_index = onsite_complaints[sender]["step"]
+
+                    current_field = onsite_steps[current_step_index]
+
+                    if current_field == "purchase_invoice":
+
+                        if message["type"] == "image":
+
+                            image_id = message["image"]["id"]
+
+                            onsite_complaints[sender]["data"]["purchase_invoice"] = image_id
+
+                            onsite_complaints[sender]["step"] += 1
+
+                            ask_next_onsite_question(sender)
+
+                            continue
+
+                        elif message["type"] == "document":
+
+                            document_id = message["document"]["id"]
+
+                            onsite_complaints[sender]["data"]["purchase_invoice"] = document_id
+
+                            onsite_complaints[sender]["step"] += 1
+
+                            ask_next_onsite_question(sender)
+
+                            continue
+
+                        else:
+
+                            send_message(
+                                sender,
+                                "❌ Please upload JPG/JPEG/PDF invoice only."
+                            )
+
+                            continue
+
+                # =================================
                 # TEXT MESSAGE
                 # =================================
 
@@ -296,29 +364,29 @@ def webhook():
 
                     user_text = message["text"]["body"].strip()
 
-                    # ==================================
-                    # ONSITE COMPLAINT FLOW
-                    # ==================================
-                    
-                    if sender in onsite_complaints:
-                    
-                        current_step_index = onsite_complaints[sender]["step"]
-                    
-                        current_field = onsite_steps[current_step_index]
-                    
-                        onsite_complaints[sender]["data"][current_field] = user_text
-                    
-                        onsite_complaints[sender]["step"] += 1
-                    
-                        ask_next_onsite_question(sender)
-                    
-                        continue
-
                     print("USER MESSAGE:", user_text)
 
-                    # =============================
-                    # CHECK PINCODE FLOW
-                    # =============================
+                    # =================================
+                    # ONSITE COMPLAINT FLOW
+                    # =================================
+
+                    if sender in onsite_complaints:
+
+                        current_step_index = onsite_complaints[sender]["step"]
+
+                        current_field = onsite_steps[current_step_index]
+
+                        onsite_complaints[sender]["data"][current_field] = user_text
+
+                        onsite_complaints[sender]["step"] += 1
+
+                        ask_next_onsite_question(sender)
+
+                        continue
+
+                    # =================================
+                    # PINCODE FLOW
+                    # =================================
 
                     if sender in waiting_for_pincode:
 
@@ -328,24 +396,23 @@ def webhook():
 
                             send_message(
                                 sender,
-                                f"✅ Nearest Zebronics Authorized Service Center\n\n📍 Address:\n{address}\n\n📞 Contact:\n{contact}\n\nThank you!"
+                                f"✅ Nearest Zebronics Authorized Service Center\n\n📍 Address:\n{address}\n\n📞 Contact:\n{contact}"
                             )
 
                         else:
 
                             send_message(
                                 sender,
-                                "❌ Sorry, service center not found for this pincode. Pls Retry with any other picode"
+                                "❌ Service center not found for this pincode."
                             )
 
-                        # Remove from waiting list
                         del waiting_for_pincode[sender]
 
                         continue
 
-                    # =============================
-                    # NORMAL GREETINGS
-                    # =============================
+                    # =================================
+                    # GREETINGS
+                    # =================================
 
                     user_text_lower = user_text.lower()
 
@@ -376,21 +443,18 @@ def webhook():
 
                     interactive = message["interactive"]
 
-                    # =============================
-                    # LIST REPLY
-                    # =============================
-
                     if interactive["type"] == "list_reply":
 
                         selected_id = interactive["list_reply"]["id"]
+
                         selected_title = interactive["list_reply"]["title"]
 
                         print("SELECTED:", selected_id)
-                        print("TITLE:", selected_title)
-                        
-                        # =========================
-                        # ONSITE FLOW
-                        # =========================
+
+                        # =================================
+                        # ONSITE COMPLAINT
+                        # =================================
+
                         if selected_id == "opt2":
 
                             onsite_complaints[sender] = {
@@ -399,11 +463,12 @@ def webhook():
                             }
 
                             ask_next_onsite_question(sender)
-                        # =========================
-                        # SERVICE CENTER FLOW
-                        # =========================
 
-                        if selected_id == "opt3":
+                        # =================================
+                        # SERVICE CENTER
+                        # =================================
+
+                        elif selected_id == "opt3":
 
                             waiting_for_pincode[sender] = True
 
@@ -412,9 +477,9 @@ def webhook():
                                 "📍 Please enter your pincode to find nearest service center."
                             )
 
-                        # =========================
+                        # =================================
                         # OTHER OPTIONS
-                        # =========================
+                        # =================================
 
                         else:
 
