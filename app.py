@@ -28,6 +28,7 @@ waiting_for_job_number = {}
 # ============================================
 
 onsite_complaints = {}
+warranty_registrations = {}
 
 onsite_steps = [
     "name",
@@ -45,6 +46,16 @@ onsite_steps = [
     "bill_no",
     "bill_date",
     "purchase_invoice"
+]
+warranty_steps = [
+    "full_name",
+    "email",
+    "mobile_no",
+    "product_model",
+    "serial_no",
+    "invoice_no",
+    "invoice_copy",
+    "purchase_date"
 ]
 
 # ============================================
@@ -243,6 +254,54 @@ def send_onsite_options(to):
     print(response.text)
 
 # ============================================
+# SEND WARRANTY OPTIONS
+# ============================================
+
+def send_warranty_options(to):
+
+    url = f"https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {
+                "text": "Choose warranty registration method."
+            },
+            "action": {
+                "buttons": [
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "wa_warranty",
+                            "title": "WhatsApp Form"
+                        }
+                    },
+                    {
+                        "type": "reply",
+                        "reply": {
+                            "id": "web_warranty",
+                            "title": "Website Form"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    print("WARRANTY OPTIONS RESPONSE:")
+    print(response.status_code)
+    print(response.text)
+# ============================================
 # SEND TEXT MESSAGE
 # ============================================
 
@@ -333,6 +392,53 @@ Thank you!
 
         del onsite_complaints[sender]
 
+# ============================================
+# ASK NEXT WARRANTY QUESTION
+# ============================================
+
+def ask_next_warranty_question(sender):
+
+    current_step_index = warranty_registrations[sender]["step"]
+
+    if current_step_index < len(warranty_steps):
+
+        current_field = warranty_steps[current_step_index]
+
+        questions = {
+            "full_name": "Please enter Full Name",
+            "email": "Please enter Email Address",
+            "mobile_no": "Please enter Mobile Number",
+            "product_model": "Please enter Product Model",
+            "serial_no": "Please enter Serial Number",
+            "invoice_no": "Please enter Invoice Number",
+            "invoice_copy": "📎 Please upload Invoice Copy\n\nSupported: jpg/jpeg/pdf\nMax size: 10MB",
+            "purchase_date": "Please enter Purchase Date"
+        }
+
+        send_message(sender, questions[current_field])
+
+    else:
+
+        data = warranty_registrations[sender]["data"]
+
+        summary = f"""
+✅ Warranty Registration Submitted
+
+👤 Full Name: {data.get('full_name')}
+📧 Email: {data.get('email')}
+📱 Mobile No: {data.get('mobile_no')}
+🛒 Product Model: {data.get('product_model')}
+🔢 Serial No: {data.get('serial_no')}
+🧾 Invoice No: {data.get('invoice_no')}
+📎 Invoice Uploaded: Yes
+📅 Purchase Date: {data.get('purchase_date')}
+
+Thank you!
+"""
+
+        send_message(sender, summary)
+
+        del warranty_registrations[sender]
 # ============================================
 # WEBHOOK
 # ============================================
@@ -444,6 +550,50 @@ def webhook():
 
                             continue
 
+                                # =================================
+                # HANDLE WARRANTY FILE UPLOAD
+                # =================================
+
+                if sender in warranty_registrations:
+
+                    current_step_index = warranty_registrations[sender]["step"]
+
+                    current_field = warranty_steps[current_step_index]
+
+                    if current_field == "invoice_copy":
+
+                        if message["type"] == "image":
+
+                            image_id = message["image"]["id"]
+
+                            warranty_registrations[sender]["data"]["invoice_copy"] = image_id
+
+                            warranty_registrations[sender]["step"] += 1
+
+                            ask_next_warranty_question(sender)
+
+                            continue
+
+                        elif message["type"] == "document":
+
+                            document_id = message["document"]["id"]
+
+                            warranty_registrations[sender]["data"]["invoice_copy"] = document_id
+
+                            warranty_registrations[sender]["step"] += 1
+
+                            ask_next_warranty_question(sender)
+
+                            continue
+
+                        else:
+
+                            send_message(
+                                sender,
+                                "❌ Please upload JPG/JPEG/PDF invoice only."
+                            )
+
+                            continue
                 # =================================
                 # TEXT MESSAGE
                 # =================================
@@ -472,6 +622,23 @@ def webhook():
 
                         continue
 
+                    # =================================
+                    # WARRANTY FLOW
+                    # =================================
+
+                    if sender in warranty_registrations:
+
+                        current_step_index = warranty_registrations[sender]["step"]
+
+                        current_field = warranty_steps[current_step_index]
+
+                        warranty_registrations[sender]["data"][current_field] = user_text
+
+                        warranty_registrations[sender]["step"] += 1
+
+                        ask_next_warranty_question(sender)
+
+                        continue
                     # =================================
                     # PINCODE FLOW
                     # =================================
@@ -582,7 +749,15 @@ def webhook():
                         # ONSITE COMPLAINT
                         # =================================
 
-                        if selected_id == "opt2":
+                        # =================================
+                        # WARRANTY REGISTRATION
+                        # =================================
+
+                        if selected_id == "opt1":
+
+                            send_warranty_options(sender)
+
+                        elif selected_id == "opt2":
 
                             send_onsite_options(sender)
 
@@ -636,7 +811,31 @@ def webhook():
                         # WHATSAPP FORM
                         # =================================
 
-                        if button_id == "wa_form":
+                        # =================================
+                        # WHATSAPP WARRANTY FORM
+                        # =================================
+
+                        if button_id == "wa_warranty":
+
+                            warranty_registrations[sender] = {
+                                "step": 0,
+                                "data": {}
+                            }
+
+                            ask_next_warranty_question(sender)
+
+                        # =================================
+                        # WEBSITE WARRANTY FORM
+                        # =================================
+
+                        elif button_id == "web_warranty":
+
+                            send_message(
+                                sender,
+                                "Please register warranty using below website:\n\nhttps://support.zebronics.com/service-request/warranty-registration"
+                            )
+                            
+                        elif button_id == "wa_form":
 
                             onsite_complaints[sender] = {
                                 "step": 0,
