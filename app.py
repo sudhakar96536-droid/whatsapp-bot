@@ -491,7 +491,7 @@ def webhook():
 
                             send_message(
                                 sender,
-                                "❌ Service center not found for this pincode."
+                                "❌ Service center not found for this pincode. Pls try again with any other pincode"
                             )
 
                         del waiting_for_pincode[sender]
@@ -527,7 +527,7 @@ def webhook():
 
                             send_message(
                                 sender,
-                                "📌 *Status: No Pending & Delivered"
+                                "📌 *Status:* No Pending / Delivered"
                             )
 
                         del waiting_for_job_number[sender]
@@ -609,7 +609,7 @@ def webhook():
 
                             send_message(
                                 sender,
-                                "📋 Please enter your full Job / Complaint Number."
+                                "📋 Please enter your full exact Job / Complaint Number."
                             )
                         # =================================
                         # OTHER OPTIONS
