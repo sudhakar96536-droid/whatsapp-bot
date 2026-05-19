@@ -509,7 +509,7 @@ def webhook():
                         if job_data:
 
                             reply_message = f"""
-✅ Complaint Details
+✅ Complaint Status
 
 📋 JOB NO: {job_data['JOB_NO']}
 📅 JOB DATE: {job_data['JOB_DATE']}
@@ -518,7 +518,7 @@ def webhook():
 🛡 Warranty: {job_data['Warranty']}
 🛒 Product Name: {job_data['Product_Name']}
 ⚠ Complaint: {job_data['Complaint']}
-📌 Status: {job_data['Status']}
+📌 *Status: Pending & Remarks:* {job_data['Status']}
 """
 
                             send_message(sender, reply_message)
@@ -527,7 +527,7 @@ def webhook():
 
                             send_message(
                                 sender,
-                                "❌ Complaint number not found."
+                                "📌 *Status: No Pending & Delivered"
                             )
 
                         del waiting_for_job_number[sender]
